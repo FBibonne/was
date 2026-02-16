@@ -1,21 +1,25 @@
-# Workshop Async Profiler
+# Workshop Async Profiler and JDK Flight Recorder
 
 Welcome to this workshop to discover the power of [async-profiler](https://github.com/async-profiler/async-profiler)
+and/or [JDK Flight Recorder](https://dev.java/learn/jvm/jfr/)
 
 ## Requirements
 
 ### Run on your computer
 
-⚠️ async-profiler only works for macos or linux
-
+- ⚠️ async-profiler only works for macos or linux 
+- ⚠️ JDK Flight Recorder works for all OS
 
 Here's all the tools you need to have installed of your computer in order to run this workshop:
 
- - [async-profiler](https://github.com/async-profiler/async-profiler/releases/)
- - [Java 17+](https://adoptium.net/fr/)
- - [Docker Compose](https://docs.docker.com/compose/)
- - [k6](https://k6.io/) (or [Docker](https://docs.docker.com/get-started/get-docker/))
- - [Java Mission Control](https://adoptium.net/fr/jmc/) (optional)
+| Async-profiler                                                                      | JDK Flight Recorder                                                                   |
+|-------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
+| [async-profiler](https://github.com/async-profiler/async-profiler/releases/)        | [Java Mission Control](https://adoptium.net/fr/jmc/)                                  |
+| [Java 17+](https://adoptium.net/fr/)                                                | [Java 25+](https://adoptium.net/fr/) to benefit last features                         |
+| [Docker Compose](https://docs.docker.com/compose/)                                  | [Docker Compose](https://docs.docker.com/compose/)                                    |
+| [k6](https://k6.io/) (or [Docker](https://docs.docker.com/get-started/get-docker/)) | [k6](https://k6.io/) (or [Docker](https://docs.docker.com/get-started/get-docker/))   |
+| [Java Mission Control](https://adoptium.net/fr/jmc/) (optional)                     |                                                                                       |
+
 
 ### Run on Github Codespaces
 
@@ -38,7 +42,7 @@ docker compose up
 Once it's done, let's start the application:
 
 ```sh
-java -Xmx250m -Xms250m -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -XX:TieredStopAtLevel=1 -jar workshop-async-profiler.jar
+java -Xmx250m -Xms250m -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -XX:TieredStopAtLevel=1 -XX:FlightRecorderOptions:stackdepth=512 -jar workshop-async-profiler.jar
 ```
 
 The application is listening on port 8080.
@@ -61,13 +65,14 @@ curl http://localhost:8090/new-books
 Some explanations about the java parameters:
 
  - `-Xmx250m` sets the maximum heap size of the JVM to 250 MB.
- - `-Xms250m` sets the initial (and minimum) heap size of the JVM to 250 MB.
+ - `-Xms250m` sets the initial (and minimum) heap size of the JVM to 250 MB : when you want to optimize GC work, it is a good practice to set `-Xms` with the same value as `-Xmx`
  - `-XX:+DebugNonSafepoints` this option ensures that the JVM records debug information at all points in the program (not just at safe points). Safe points are specific places in code where the JVM can pause execution for tasks like garbage collection, and this flag is useful for generating more accurate profiling information.
  - `-XX:+UnlockDiagnosticVMOptions` flag unlocks additional options for diagnosing faults or performance problems with the JVM.
  - `-XX:TieredStopAtLevel=1` disables intermediate compilation tiers (1, 2, 3). Setting this to 1 limits it to only the first level of compilation. We don't want our JVM to spend too much time into runtime optimization.
+ - `-XX:FlightRecorderOptions:stackdepth=512` **provides non truncated stack traces to JDK flight recorder**
 ---
 
-> When agent is not loaded at JVM startup (by using -agentpath option) it is highly recommended to use -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints JVM flags. Without those flags the profiler will still work correctly but results might be less accurate. For example, without -XX:+DebugNonSafepoints there is a high chance that simple inlined methods will not appear in the profile. When the agent is attached at runtime, CompiledMethodLoad JVMTI event enables debug info, but only for methods compiled after attaching.
+> **For Async profiler** when agent is not loaded at JVM startup (by using -agentpath option) it is highly recommended to use -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints JVM flags. Without those flags the profiler will still work correctly but results might be less accurate. For example, without -XX:+DebugNonSafepoints there is a high chance that simple inlined methods will not appear in the profile. When the agent is attached at runtime, CompiledMethodLoad JVMTI event enables debug info, but only for methods compiled after attaching.
 > [README](https://github.com/async-profiler/async-profiler/blob/master/docs/Troubleshooting.md#known-limitations)
 
 
@@ -127,29 +132,26 @@ You can find more informations about flamegraph in the [Resources](#resources) s
 
 ### Finding the application PID
 
-To use async-profiler, we need the PID (Process ID) of our Java application. Here are several ways to find it:
+To use both async-profiler and JDK Flight Recorder, we need the PID (Process ID) of our Java application. Here are several ways to find it:
 
 ```sh
 # Option 1: Using jps
-jps -l | grep workshop-async-profiler.jar
+export WORKSHOP_PID=$(jps -l | grep workshop-async-profiler.jar | cut -d' ' -f1)
 
-# Option 2: Using ps
-ps aux | grep workshop-async-profiler.jar
+# Option 2: Using pgrep (improved ps command)
+export WORKSHOP_PID=$(pgrep -f workshop-async-profiler.jar)
 
 # Option 3: If you know the port (8080 in our case)
-lsof -i :8080
+export WORKSHOP_PID=$(lsof -t -i :8080)
 ```
 
-The PID is the number that appears in the first column of the output.
+The PID is stored in the `WORKSHOP_PID` environment variable  
 
 ### Wall-clock profiling
 
 Wall-clock time (also called wall time) is the time it takes to run a block of code. 
-The majority of applications dealing with tiered components like a database, some HTTP or GRPC resources or a message broker (RabbiMQ, Apache Kafka, etc...) for example. In those case, the application spend most of its time on IO, waiting for those externals components to respond.
-
-> -e wall option tells async-profiler to sample all threads equally every given period of time regardless of thread status: Running, Sleeping or Blocked.
-> [README](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md#wall-clock-profiling)
-
+The majority of applications dealing with tiered components like a database, some HTTP or GRPC resources or a message broker (RabbiMQ, Apache Kafka, etc...) for example.
+In those cases, the application spends most of its time on IO, waiting for those externals components to respond.
 
 #### Inject some traffic
 
@@ -168,16 +170,47 @@ docker run --rm --add-host host.docker.internal:host-gateway -i grafana/k6 run -
 
 #### Our first Flamegraph
 
-Let's run the command during the traffic injection:
+<details>
+   <summary><b>With async-profiler</b></summary>
+  `-e wall option` tells async-profiler to sample all threads equally every given period of time regardless of thread status: Running, Sleeping or Blocked.
+  [README](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md#wall-clock-profiling)
 
-```sh
-cd /path/to/async-profiler-directory/bin
-./asprof -e wall -f wall-1.html <pid>
-```
+  Let's run the command during the traffic injection:
+  ```sh
+  cd /path/to/async-profiler-directory/bin
+  ./asprof -e wall -f wall-1.html $WORKSHOP_PID
+  ```
+  async-profiler will sample during 60 seconds.
 
-async-profiler will sample during 60 seconds.
+  Open the generated flamegraph into your favorite browser.
+</details>
 
-Open the generated flamegraph into your favorite browser.
+<details>
+  <summary><b>With JDK Flight Recorder (JFR)</b></summary>
+  Let's run the command during the traffic injection:
+  
+  ```sh
+  # Capture CPU samples with JFR for 60s
+  jcmd $WORKSHOP_PID JFR.start filename=wall.jfr duration=60s settings=cpu-sample.jfc
+  ```
+
+  the `jcmd` command with the option `JFR.Start` starts a JFR recording for a duration of 60s. Record will be in the wall.jfr file.
+  the record settings are defined in the cpu-sample.jfc : see [here](#more-about-jfc-sample-file-for-jfr) for more details about settings
+
+  You can access the results via JDK Mission Control (JMC) :
+   - Open the generated wall.jfr file in JMC
+   - Open the flamegraph for _method profiling_ :
+     - Difficult to interpret, isn't it !
+  - Open the flamegraph for _threads_ and select `http-nio-exec*` threads :
+    - Take note of the most used methods
+  - Open the flamegraph with all events (click on _Event Browser_) :
+    - are the same most used methods ? 
+
+  If you use Linux, you can run `jfr view cpu-time-hot-methods wall.jfr` (jfr is a JDK tools located at $JAVA_HOME/bin) which
+  gives you directly the most used methods (experimental méthod only available for linux)
+
+</details>
+
 
 > [!important]
 > ❓ Questions:
@@ -188,16 +221,31 @@ Open the generated flamegraph into your favorite browser.
 > - where does the books from the endpoint `new-books` come from?
 > - what is taking more time?
 
+<details>
+  <summary><b>Measure effective time consumed to confirm your guess with JDK Flight Recorder</b></summary>
+  - Again inject traffic
+  - While injecting, run :
+  
+  ```sh
+  # Capture CPU samples with JFR for 60s
+  jcmd $WORKSHOP_PID JFR.start filename=wall-timing.jfr duration=60s settings=cpu-sample.jfc method-timing=workshop.asyncprofiler.book.BookController
+  ```
 
- Repeat the whole operation but this time using the option `-t`.
+  - run `jfr view method-timing wall-timing.jfr`
+</details>
 
-> Wall-clock profiler is most useful in per-thread mode: -t.
-> [README](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md#wall-clock-profiling)
+<details>
+   <summary><b>With async-profiler</b></summary>
+   Repeat the whole operation but this time using the option `-t`.
 
- ```sh
- cd /path/to/async-profiler-directory/bin
- ./asprof -e wall -t -f wall-per-thread.html <pid>
- ```
+  > Wall-clock profiler is most useful in per-thread mode: -t.
+  > [README](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md#wall-clock-profiling)
+
+   ```sh
+   cd /path/to/async-profiler-directory/bin
+   ./asprof -e wall -t -f wall-per-thread.html <pid>
+   ```
+</details>
 
 > [!important]
 > ❓ Count the number of Tomcat’s thread.
@@ -397,7 +445,6 @@ Then, you can open the JFR file using [Java Mission Control](https://adoptium.ne
 
 ## Resources
 
-
 Here's a list of resources that helped me built this workshop.
 
 - [async-profiler](https://github.com/async-profiler/async-profiler)
@@ -414,9 +461,5 @@ Here's a list of resources that helped me built this workshop.
 ](https://www.youtube.com/watch?v=wa_EtTUx-z0) by Guillaume Darmont
 - 🇫🇷 [Performance et diagnostic - Méthodologie et outils](https://speakerdeck.com/vladislavpernin/performance-et-diagnostic-methodologie-et-outils) by Vladislav Pernin
 
-
-
-
-
-
+## More about JFC sample file for JFR
 
