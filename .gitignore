@@ -14,3 +14,7 @@ memory.html
 # CPU
 cpu.html
 cpu-itimer.html
+/mise.toml
+
+# JFR
+**/*.jfr
