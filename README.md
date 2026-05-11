@@ -7,10 +7,10 @@ and/or [JDK Flight Recorder](https://dev.java/learn/jvm/jfr/)
 
 ### Run on your computer
 
-- ⚠️ async-profiler only works for macos or linux 
+- ⚠️ async-profiler only works for macOS or linux 
 - ⚠️ JDK Flight Recorder works for all OS
 
-Here's all the tools you need to have installed of your computer in order to run this workshop:
+Here are all the tools you need to have installed on your computer to run this workshop:
 
 | Async-profiler                                                                      | JDK Flight Recorder                                                                   |
 |-------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
@@ -21,9 +21,9 @@ Here's all the tools you need to have installed of your computer in order to run
 | [Java Mission Control](https://adoptium.net/fr/jmc/) (optional)                     |                                                                                       |
 
 
-### Run on Github Codespaces
+### Run on GitHub Codespaces
 
-Create a Github Codespace directly from the repository
+Create a GitHub Codespace directly from the repository
 
 ![codespace](./images/codespaces.png)
 
@@ -33,7 +33,7 @@ Create a Github Codespace directly from the repository
 
 You are going to run a java application. This application has some dependencies that we will discover later.
 
-In a terminal, please run this command to start the needed dependencies:
+In a terminal, please run this command to start the necessary dependencies:
 
 ```sh
 docker compose up
@@ -65,14 +65,14 @@ curl http://localhost:8090/new-books
 Some explanations about the java parameters:
 
  - `-Xmx250m` sets the maximum heap size of the JVM to 250 MB.
- - `-Xms250m` sets the initial (and minimum) heap size of the JVM to 250 MB : when you want to optimize GC work, it is a good practice to set `-Xms` with the same value as `-Xmx`
+ - `-Xms250m` sets the initial (and minimum) heap size of the JVM to 250 MB: when you want to optimize GC work, it is a good practice to set `-Xms` with the same value as `-Xmx`
  - `-XX:+DebugNonSafepoints` this option ensures that the JVM records debug information at all points in the program (not just at safe points). Safe points are specific places in code where the JVM can pause execution for tasks like garbage collection, and this flag is useful for generating more accurate profiling information.
  - `-XX:+UnlockDiagnosticVMOptions` flag unlocks additional options for diagnosing faults or performance problems with the JVM.
- - `-XX:TieredStopAtLevel=1` disables intermediate compilation tiers (1, 2, 3). Setting this to 1 limits it to only the first level of compilation. We don't want our JVM to spend too much time into runtime optimization.
- - `-XX:FlightRecorderOptions:stackdepth=512` **provides non truncated stack traces to JDK flight recorder**
+ - `-XX:TieredStopAtLevel=1` disables intermediate compilation tiers (1, 2, 3). Setting this to 1 limits it to only the first level of compilation. We don't want our JVM to spend too much time on runtime optimization.
+ - `-XX:FlightRecorderOptions:stackdepth=512` **provides non-truncated stack traces to JDK flight recorder**
 ---
 
-> **For Async profiler** when agent is not loaded at JVM startup (by using -agentpath option) it is highly recommended to use -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints JVM flags. Without those flags the profiler will still work correctly but results might be less accurate. For example, without -XX:+DebugNonSafepoints there is a high chance that simple inlined methods will not appear in the profile. When the agent is attached at runtime, CompiledMethodLoad JVMTI event enables debug info, but only for methods compiled after attaching.
+> **For Async profiler** when the agent is not loaded at JVM startup (by using -agentpath option), it is highly recommended to use -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints JVM flags. Without those flags, the profiler will still work correctly, but results might be less accurate. For example, without -XX:+DebugNonSafepoints there is a high chance that simple inlined methods will not appear in the profile. When the agent is attached at runtime, the CompiledMethodLoad JVMTI event enables debug info, but only for methods compiled after attaching.
 > [README](https://github.com/async-profiler/async-profiler/blob/master/docs/Troubleshooting.md#known-limitations)
 
 
@@ -96,7 +96,7 @@ The warmup script will:
 - Run 10 virtual users (VUs)
 - Each VU will execute 20 iterations
 - Call both `/books` and `/new-books` endpoints
-- Verify that 99% of requests complete within 1000ms
+- Verify that 99% of requests complete within 1000 ms
 - Maximum execution time is capped at 30 seconds
 
 > [!important]
@@ -106,13 +106,13 @@ The warmup script will:
 
 ### 🔥 Flamegraph
 
-During our journey into profiling, we will generate flamegraphs to inspect our application. Here's a short introduction to flamegraph:
+During our journey into profiling, we will generate flamegraphs to inspect our application. Here's a short introduction to flamegraphs:
 
 A flamegraph is a visualization tool used to analyze performance bottlenecks in software, particularly for profiling CPU usage, memory, or execution time. It represents hierarchical data (like call stacks) in a compact, easy-to-read format, with the aim of showing where an application spends most of its time.
 
  - A flamegraph shows the function call hierarchy of a program, with each box representing a function or method in the call stack.
- - The x-axis represents the total time spent in a program, broken down by different functions. **The width of each box indicates how much time is spent in that particular function**.
- - The y-axis represents the call stack depth. Functions higher up in the flamegraph were called by functions below them.
+ - The x-axis represents the total time spent in a program, broken down by different functions. **The width of each box indicates how much time is spent on that particular function**.
+ - The y-axis represents the call stack depth. Functions below them called functions higher up in the flamegraph.
 
 Example:
 
@@ -128,7 +128,7 @@ Color Code:
  - 🟢 Java
  - 🟡 C++
 
-You can find more informations about flamegraph in the [Resources](#resources) section and [here](https://github.com/async-profiler/async-profiler/blob/master/docs/FlamegraphInterpretation.md).
+You can find more information about flamegraphs in the [Resources](#resources) section and [here](https://github.com/async-profiler/async-profiler/blob/master/docs/FlamegraphInterpretation.md).
 
 ### Finding the application PID
 
@@ -150,8 +150,8 @@ The PID is stored in the `WORKSHOP_PID` environment variable
 ### Wall-clock profiling
 
 Wall-clock time (also called wall time) is the time it takes to run a block of code. 
-The majority of applications dealing with tiered components like a database, some HTTP or GRPC resources or a message broker (RabbiMQ, Apache Kafka, etc...) for example.
-In those cases, the application spends most of its time on IO, waiting for those externals components to respond.
+The majority of applications deal with tiered components like a database, some HTTP or GRPC resources or a message broker (RabbiMQ, Apache Kafka, etc...), for example.
+In those cases, the application spends most of its time on IO, waiting for those external components to respond.
 
 #### Inject some traffic
 
@@ -182,7 +182,7 @@ docker run --rm --add-host host.docker.internal:host-gateway -i grafana/k6 run -
   ```
   async-profiler will sample during 60 seconds.
 
-  Open the generated flamegraph into your favorite browser.
+  Open the generated flamegraph in your favorite browser.
 </details>
 
 <details>
@@ -194,19 +194,19 @@ docker run --rm --add-host host.docker.internal:host-gateway -i grafana/k6 run -
   jcmd $WORKSHOP_PID JFR.start filename=wall.jfr duration=60s settings=cpu-sample.jfc
   ```
 
-  the `jcmd` command with the option `JFR.Start` starts a JFR recording for a duration of 60s. Record will be in the wall.jfr file.
-  the record settings are defined in the cpu-sample.jfc : see [here](#more-about-jfc-sample-file-for-jfr) for more details about settings
+  the `jcmd` command with the option `JFR.Start` starts a JFR recording for a duration of 60 s. Record will be in the wall.jfr file.
+  the record settings are defined in the cpu-sample.jfc: see [here](#more-about-jfc-sample-file-for-jfr) for more details about settings
 
   You can access the results via JDK Mission Control (JMC) :
    - Open the generated wall.jfr file in JMC
    - Open the flamegraph for _method profiling_ :
-     - Difficult to interpret, isn't it !
+     - Difficult to interpret, isn't it!
   - Open the flamegraph for _threads_ and select `http-nio-exec*` threads :
     - Take note of the most used methods
   - Open the flamegraph with all events (click on _Event Browser_) :
-    - are the same most used methods ? 
+    - are the same most used methods? 
 
-  If you use Linux, you can run `jfr view cpu-time-hot-methods wall.jfr` (jfr is a JDK tools located at $JAVA_HOME/bin) which
+  If you use Linux, you can run `jfr view cpu-time-hot-methods wall.jfr` (jfr is a JDK tool located at $JAVA_HOME/bin) which
   gives you directly the most used methods (experimental méthod only available for linux)
 
 </details>
@@ -279,14 +279,14 @@ It adds 100 milliseconds latency.
   
   Open the flamegraph in JMC for the threads view
   
-  **To look for some methods in the flamegraph, you can type part of their fully qualified name in the input field at the topof the flamegraph.**
+  **To look for some methods in the flamegraph, you can type part of their fully qualified name in the input field at the top of the flamegraph.**
 </details>
 
 
 
 > [!important]
 > ❓ In the flamegraph, look for the application's endpoints `/books` and `/new-books`.
-> What are the main difference with the first flamegraph? Can you explain the differences?
+> What is the main difference with the first flamegraph? Can you explain the differences?
 
 Once you have finished your analysis, remove the latency using:
 
@@ -329,7 +329,7 @@ authors: {
   ./asprof -e alloc -f memory.html <pid>
   ```
 
-  Look at the flamegraph : memory allocations are now sampled
+  Look at the flamegraph: memory allocations are now sampled
 </details>
 
 
@@ -357,7 +357,7 @@ authors: {
 
 #### Start profiling simultaneously with the application
 
-Right now, we can't find which piece of code created the logging filter. We can assume it's a bean Spring that have been created at the application start up.
+Right now, we can't find which piece of code created the logging filter. We can assume it's a bean Spring that has been created at the application startup.
 We need to profile code as soon as the JVM starts up.
 
 <details>
@@ -384,7 +384,7 @@ We need to profile code as soon as the JVM starts up.
 
 <details>
   <summary><b>Starting JDK Flight Recorder with the JVM</b></summary>
-  To start the JDK Flight Recorder with the JVM, we need to pass an option : `-XX:StartFlightRecording`.
+  To start the JDK Flight Recorder with the JVM, we need to pass an option: `-XX:StartFlightRecording`.
   As we only need to which piece of code creates the `AbstractRequestLoggingFilter`, the recording will be configured only
   to capture this information :
 
@@ -420,7 +420,7 @@ Can you tell what is the instance of `AbstractRequestLoggingFilter`?
 		loggingFilter.setMaxPayloadLength(5 * 1024 * 1024);
    ```
 
-   For each HTTP requests, an array of 5MB will be created.  
+   For each HTTP request, an array of 5MB will be created.  
 
 </details>
 
@@ -430,7 +430,7 @@ Can you tell what is the instance of `AbstractRequestLoggingFilter`?
 > [!tip]
 > Don't forget to restart the application without the async profiler java agent or the JDK Flight Recorder enabled 
 
-A new endpoint as been developed and deployed. It computes the rating of an author based on all its written books.
+A new endpoint has been developed and deployed. It computes the rating of an author based on all its written books.
 
 Some say it's a heavy CPU consumer, let's find out.
 
@@ -479,7 +479,7 @@ export function authorRating() {
   If changing the configuration is not possible, you may fall back to two options:
   
   `ctimer` profiling mode
-  > It is similar to cpu mode, but does not require perf_events support. As a drawback, there will be no kernel stack traces.
+  > It is similar to cpu mode but does not require perf_events support. As a drawback, there will be no kernel stack traces.
   
   ```sh
   cd /path/to/async-profiler-directory/bin
@@ -506,12 +506,12 @@ export function authorRating() {
   jcmd $WORKSHOP_PID JFR.start filename=cpu.jfr duration=60s settings=cpu-sample.jfc
   ```
 
-  Have a look at "Automated analysis results" for methods profiling and open flamegraph for method profiling for in JMC
+  Have a look at "Automated analysis results" for methods profiling and open the flamegraph for method profiling for in JMC
   
 </details>
 
 > [!important]
-> ❓ Generate all the flamgraph and analyze the results.
+> ❓ Generate all the flamgraphs and analyze the results.
 
 <details>
   <summary><b>Confirm that CPU consumption impact method execution time with JDK Flight Recorder</b></summary>
@@ -530,9 +530,9 @@ export function authorRating() {
 
 ### Multiple Events (optional)
 
-It's possible to profile multiple events at the same time. For example, you can profile CPU, allocations and locks at the same time. You may choose any other execution event instead of CPU, like wall-clock.
+It's possible to profile multiple events at the same time. For example, you can profile CPU, allocations, and locks at the same time. You may choose any other execution event instead of CPU, like wall-clock.
 
-**The only outpout format that supports multiple events is JFR**.
+**The only output format that supports multiple events is JFR**.
 
 Let's profile the application:
 
@@ -547,7 +547,7 @@ Then, you can open the JFR file using [Java Mission Control](https://adoptium.ne
 
 ## Resources
 
-Here's a list of resources that helped me built this workshop.
+Here's a list of resources that helped me build this workshop.
 
 - [async-profiler](https://github.com/async-profiler/async-profiler)
 - [jvmperf](https://jvmperf.net/)
@@ -558,14 +558,14 @@ Here's a list of resources that helped me built this workshop.
 - [[Java][Profiling] Async-profiler - manual by use cases](https://krzysztofslusarski.github.io/2022/12/12/async-manual.html) by Krzysztof Ślusarski
 - [[Java][Profiling][Memory leak] Finding heap memory leaks with Async-profiler](https://krzysztofslusarski.github.io/2022/11/27/async-live.html) by Krzysztof Ślusarski
 - [Java Safepoint and Async Profiling](https://seethawenner.medium.com/java-safepoint-and-async-profiling-cdce0818cd29) by Seetha Wenner
-- 🇫🇷 [Traquer une fuite mémoire : cas d’étude avec Hibernate 5, ne tombez pas dans le IN !](https://www.sfeir.dev/back/traquer-une-fuite-memoire-cas-detude-avec-hibernate-5-ne-tombez-pas-dans-le-in/) by Ling-Chun SO
+- 🇫🇷 [Traquer une fuite mémoire :cas d’étude avec Hibernate 5, ne tombez pas dans le IN !](https://www.sfeir.dev/back/traquer-une-fuite-memoire-cas-detude-avec-hibernate-5-ne-tombez-pas-dans-le-in/)by Ling-Chun SO
 - 🇫🇷 [Sous le capot d'une application JVM - Java Flight Recorder / Java Mission Control](https://www.youtube.com/watch?v=wa_EtTUx-z0) by Guillaume Darmont
 - 🇫🇷 [Performance et diagnostic - Méthodologie et outils](https://speakerdeck.com/vladislavpernin/performance-et-diagnostic-methodologie-et-outils) by Vladislav Pernin
 
 ## More about JFC sample file for JFR
 
 JDK FLight Recorder works by recording many events emitted by the JVM and the application. Many events like creating a new instance of a class,
-calling a method, starting a GC or reading bytes from a file are predefined in JDK. A settings file sets events enabled for each recording.
+calling a method, starting a GC, or reading bytes from a file are predefined in JDK. A settings file sets events enabled for each recording.
 Two setting files exist in the JDK :
 1. `lib/jfr/default.jfc` : for current profiling: record fewer events with lower sample rate but with a lower overhead which is acceptable for production use: this is the enabled default
 2. `lib/jfr/profile.jfc` : it records more events at a higher rate for diagnosis profiling with higher overhead
