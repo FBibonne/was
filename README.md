@@ -20,6 +20,8 @@ Here are all the tools you need to have installed on your computer to run this w
 | [k6](https://k6.io/) (or [Docker](https://docs.docker.com/get-started/get-docker/)) | [k6](https://k6.io/) (or [Docker](https://docs.docker.com/get-started/get-docker/))   |
 | [Java Mission Control](https://adoptium.net/fr/jmc/) (optional)                     |                                                                                       |
 
+For async-profiler, download the last release and extract it at a location where you'll be able to find it back, for example, at the root of the was repository
+(after we will refer to this location as `/path/to/async-profiler-directory`d)
 
 ### Run on GitHub Codespaces
 
@@ -36,7 +38,7 @@ You are going to run a java application. This application has some dependencies 
 In a terminal, please run this command to start the necessary dependencies:
 
 ```sh
-docker compose up
+docker compose up -d
 ```
 
 Once it's done, let's start the application:
@@ -53,10 +55,16 @@ Make sure your application is correctly started by running:
 curl http://localhost:8080/books
 ```
 
-and
+- Check the wiremock proxy for the third-party web service :
 
 ```sh
-curl http://localhost:8090/new-books
+curl http://localhost:8100/new-books
+```
+
+- Check another endpoint of the application :
+
+```sh
+curl http://localhost:8080/new-books
 ```
 
 ---
@@ -66,10 +74,13 @@ Some explanations about the java parameters:
 
  - `-Xmx250m` sets the maximum heap size of the JVM to 250 MB.
  - `-Xms250m` sets the initial (and minimum) heap size of the JVM to 250 MB: when you want to optimize GC work, it is a good practice to set `-Xms` with the same value as `-Xmx`
- - `-XX:+DebugNonSafepoints` this option ensures that the JVM records debug information at all points in the program (not just at safe points). Safe points are specific places in code where the JVM can pause execution for tasks like garbage collection, and this flag is useful for generating more accurate profiling information.
- - `-XX:+UnlockDiagnosticVMOptions` flag unlocks additional options for diagnosing faults or performance problems with the JVM.
- - `-XX:TieredStopAtLevel=1` disables intermediate compilation tiers (1, 2, 3). Setting this to 1 limits it to only the first level of compilation. We don't want our JVM to spend too much time on runtime optimization.
  - `-XX:FlightRecorderOptions:stackdepth=512` **provides non-truncated stack traces to JDK flight recorder**
+ - `-XX:+UnlockDiagnosticVMOptions` this flag unlocks additional unsuported options, including the followings 
+ - `-XX:+DebugNonSafepoints` this option ensures that the JVM records debug information at all points in the program (not just at safe points). Safe points are specific places in code where the JVM can pause execution for tasks like garbage collection, and this flag is useful for generating more accurate profiling information.
+ - `-XX:TieredStopAtLevel=1` disables intermediate compilation tiers (1, 2, 3). Setting this to 1 limit it to only the first level of compilation. We don't want our JVM to spend too much time on runtime optimization.
+
+See this link to get all existing options for a JVM : https://chriswhocodes.com/hotspot_options_openjdk25.html
+
 ---
 
 > **For Async profiler** when the agent is not loaded at JVM startup (by using -agentpath option), it is highly recommended to use -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints JVM flags. Without those flags, the profiler will still work correctly, but results might be less accurate. For example, without -XX:+DebugNonSafepoints there is a high chance that simple inlined methods will not appear in the profile. When the agent is attached at runtime, the CompiledMethodLoad JVMTI event enables debug info, but only for methods compiled after attaching.
@@ -173,7 +184,8 @@ docker run --rm --add-host host.docker.internal:host-gateway -i grafana/k6 run -
 <details>
    <summary><b>With async-profiler</b></summary>
   `-e wall option` tells async-profiler to sample all threads equally every given period of time regardless of thread status: Running, Sleeping or Blocked.
-  [README](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md#wall-clock-profiling)
+
+  <a href="https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md#wall-clock-profiling">README</a>
 
   Let's run the command during the traffic injection:
   ```sh
@@ -187,6 +199,7 @@ docker run --rm --add-host host.docker.internal:host-gateway -i grafana/k6 run -
 
 <details>
   <summary><b>With JDK Flight Recorder (JFR)</b></summary>
+  
   Let's run the command during the traffic injection:
   
   ```sh
@@ -235,6 +248,8 @@ docker run --rm --add-host host.docker.internal:host-gateway -i grafana/k6 run -
 
   - run `jfr view method-timing wall-timing.jfr`
 </details>
+
+#### Let's see results by thread
 
 <details>
    <summary><b>Let's see async-profiler per-thread mode</b></summary>
@@ -369,7 +384,7 @@ We need to profile code as soon as the JVM starts up.
   Stop your java application and launch it with this new parameter:
   
   ```sh
-  java -agentpath:/path/to/async-profiler-directory/lib/libasyncProfiler.so=start,event="org.springframework.web.filter.AbstractRequestLoggingFilter.<init>" -Xmx250m -Xms250m -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -XX:TieredStopAtLevel=1 -jar workshop-async-profiler.jar
+  java -agentpath:/path/to/async-profiler-directory/lib/libasyncProfiler.so=start,event="workshop.asyncprofiler.HandMadeRequestLoggingFilter.<init>" -Xmx250m -Xms250m -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -XX:TieredStopAtLevel=1 -jar workshop-async-profiler.jar
   ```
   
   The file `libasyncProfiler.so` can be found in the directory `lib` of the async-profiler.
@@ -385,11 +400,11 @@ We need to profile code as soon as the JVM starts up.
 <details>
   <summary><b>Starting JDK Flight Recorder with the JVM</b></summary>
   To start the JDK Flight Recorder with the JVM, we need to pass an option: `-XX:StartFlightRecording`.
-  As we only need to which piece of code creates the `AbstractRequestLoggingFilter`, the recording will be configured only
+  As we only need to which piece of code creates the `HandMadeRequestLoggingFilter`, the recording will be configured only
   to capture this information :
 
   ```sh
-  java -XX:FlightRecorderOptions:stackdepth=512 '-XX:StartFlightRecording:filename=init-trace.jfr,method-trace=org.springframework.web.filter.AbstractRequestLoggingFilter::<init>' -Xmx250m -Xms250m -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -XX:TieredStopAtLevel=1 -jar workshop-async-profiler.jar
+  java -XX:FlightRecorderOptions:stackdepth=512 '-XX:StartFlightRecording:filename=init-trace.jfr,method-trace=workshop.asyncprofiler.HandMadeRequestLoggingFilter::<init>' -Xmx250m -Xms250m -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -XX:TieredStopAtLevel=1 -jar workshop-async-profiler.jar
   ```
 
   Once the application is started, dump the record :
@@ -406,21 +421,16 @@ We need to profile code as soon as the JVM starts up.
   ```
 </details>
 
-Can you tell what is the instance of `AbstractRequestLoggingFilter`?
+Can you tell what is the instance of `HandMadeRequestLoggingFilter`?
 
 <details>
    <summary><b>Solution</b></summary>
 
-   The memory allocation is due to the bean `CommonsRequestLoggingFilter` created in `WorkshopAsyncProfilerApplication`.
-
-   This bean is configured with:
-
-   ```java
-   	    loggingFilter.setIncludePayload(true);
-		loggingFilter.setMaxPayloadLength(5 * 1024 * 1024);
-   ```
-
-   For each HTTP request, an array of 5MB will be created.  
+   The memory allocation is due to the bean `HandMadeRequestLoggingFilter` created in `WorkshopAsyncProfilerApplication`.
+  
+   The HandMadeRequestLoggingFilter is slow because it creates a 5 Mo array for each HTTP request. Thanks to profiling,
+   we found the place where we could replace it with the Spring implementation (`CommonsRequestLoggingFilter`) which has
+   not any more this issue of excessive memory allocation.
 
 </details>
 

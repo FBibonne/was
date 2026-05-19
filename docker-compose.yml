@@ -19,7 +19,6 @@ services:
       - ./mappings:/home/wiremock/mappings
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
 
-
   toxiproxy:
     image: "shopify/toxiproxy"
     ports:
@@ -28,5 +27,15 @@ services:
   # We created proxy configuration from another ephermal container
   toxiproxy-config:
     image: "shopify/toxiproxy"
+    environment:
+      - http_proxy=
+      - https_proxy=
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
     entrypoint: >
       sh -c "/go/bin/toxiproxy-cli -h toxiproxy:8474 create wiremock --listen 0.0.0.0:8080 --upstream wiremock:8080;"
+    depends_on:
+      toxiproxy:
+        condition: service_started
+      wiremock:
+        condition: service_started

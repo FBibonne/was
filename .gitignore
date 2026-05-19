@@ -12,7 +12,7 @@ wall-*.html
 memory.html
 
 # CPU
-cpu.html
+cpu*.html
 cpu-itimer.html
 /mise.toml
 
