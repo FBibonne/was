@@ -213,9 +213,7 @@ docker run --rm --add-host host.docker.internal:host-gateway -i grafana/k6 run -
   You can access the results via JDK Mission Control (JMC) :
    - Open the generated wall.jfr file in JMC
    - Open the flamegraph for _method profiling_ :
-     - Difficult to interpret, isn't it!
-  - Open the flamegraph for _threads_ and select `http-nio-exec*` threads :
-    - Take note of the most used methods
+    - Difficult to interpret, isn't it!
   - Open the flamegraph with all events (click on _Event Browser_) :
     - are the same most used methods? 
 
@@ -262,6 +260,13 @@ docker run --rm --add-host host.docker.internal:host-gateway -i grafana/k6 run -
    cd /path/to/async-profiler-directory/bin
    ./asprof -e wall -t -f wall-per-thread.html <pid>
    ```
+</details>
+
+<details>
+  <summary><b>Let's see results by thread with JMC</b></summary>
+
+  Open the flamegraph for _threads_ and select `http-nio-exec*` threads and take note of the most used methods
+  
 </details>
 
 > [!important]
@@ -528,7 +533,7 @@ export function authorRating() {
   Run again profiling :
 
   ```sh
-  jcmd $WORKSHOP_PID JFR.start filename=cpu-timing.jfr duration=60s settings=cpu-sample.jfc method-timing=java.util.concurrent.atomic.AtomicLong\;workshop.asyncprofiler.book.BookController
+  jcmd $WORKSHOP_PID JFR.start filename=cpu-timing.jfr duration=60s settings=cpu-sample.jfc method-timing=workshop.asyncprofiler.book.BookController
   ```
 
   Then :
