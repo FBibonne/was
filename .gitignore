@@ -2,7 +2,7 @@
 .idea
 
 # Async profiler directory
-async-*
+async-*/
 
 # Async profiler results
 # Wall time
