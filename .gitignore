@@ -2,7 +2,7 @@
 .idea
 
 # Async profiler directory
-async-*
+async-*/
 
 # Async profiler results
 # Wall time
@@ -12,7 +12,7 @@ wall-*.html
 memory.html
 
 # CPU
-cpu.html
+cpu*.html
 cpu-itimer.html
 /mise.toml
 
