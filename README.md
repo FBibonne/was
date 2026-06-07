@@ -35,7 +35,7 @@ Create a GitHub Codespace directly from the repository
 
 ### First of all, clone this repo
 
-Run `git clone --branch=insee https://github.com/FBibonne/was.git` . You'll need to be at the root of the was repo to run the java app and k6 scripts.
+Run `git clone --depth=1 https://github.com/vgallet/was.git` . You'll need to be at the root of the was repo to run the java app and k6 scripts.
 
 ### Start the application
 
