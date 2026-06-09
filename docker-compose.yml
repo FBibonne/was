@@ -2,7 +2,8 @@ version: '3.9'
 
 services:
   postgres:
-    image: postgres:14-alpine
+    # postgres:14-alpine3.23
+    image: postgres@sha256:6765739f422606933bc2aece3a2288e40e491488fd7e7c14e3323dfeefb10e38
     ports:
       - 5432:5432
     environment:
@@ -11,7 +12,8 @@ services:
       - POSTGRES_DB=postgres
 
   wiremock:
-    image: "wiremock/wiremock:latest"
+  # wiremock/wiremock:3.13.2
+    image: "wiremock/wiremock@sha256:fd27e46090916e85326229e5102ee169ae729059f3374549615bd20a35fee1f2"
     container_name: my_wiremock
     ports:
       - "8090:8080"
@@ -19,14 +21,25 @@ services:
       - ./mappings:/home/wiremock/mappings
     entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
 
-
   toxiproxy:
-    image: "shopify/toxiproxy"
+    # shopify/toxiproxy:2.1.4
+    image: shopify/toxiproxy@sha256:a6b080af39986b863a1f7c5a3b9bacf2afeb48abab8f0eb7e243f8f7ad38c645
     ports:
       - "8474:8474"
       - "8100:8080"
   # We created proxy configuration from another ephermal container
   toxiproxy-config:
-    image: "shopify/toxiproxy"
+    # shopify/toxiproxy:2.1.4
+    image: shopify/toxiproxy@sha256:a6b080af39986b863a1f7c5a3b9bacf2afeb48abab8f0eb7e243f8f7ad38c645
+    environment:
+      - http_proxy=
+      - https_proxy=
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
     entrypoint: >
       sh -c "/go/bin/toxiproxy-cli -h toxiproxy:8474 create wiremock --listen 0.0.0.0:8080 --upstream wiremock:8080;"
+    depends_on:
+      toxiproxy:
+        condition: service_started
+      wiremock:
+        condition: service_started
